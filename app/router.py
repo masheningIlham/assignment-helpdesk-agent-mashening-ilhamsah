@@ -7,10 +7,28 @@ Pola ini mengikuti workflow router yang sudah dipelajari di Sesi 12.4:
                                   -> jika butuh aksi -> tool call
 """
 
+import re
 from app.rag import answer_from_knowledge_base
 from app.tools import get_ticket_status
 
 # 🔧 TODO: import LLM client di sini (Gemini AI API) untuk melakukan intent detection
+TICKET_ID_PATTERN = re.compile(r"\bTICKET-\d{4}\b", re.IGNORECASE)
+TICKET_STATUS_KEYWORDS = (
+    "status tiket",
+    "status ticket",
+    "cek tiket",
+    "cek ticket",
+    "periksa tiket",
+    "periksa ticket",
+    "lacak tiket",
+    "lacak ticket",
+    "check ticket",
+    "ticket status",
+    "track ticket",
+    "tracking ticket",
+    "tiket saya",
+    "ticket saya"
+)
 
 
 async def detect_intent(query: str) -> str:
@@ -31,7 +49,18 @@ async def detect_intent(query: str) -> str:
     #    Jawab hanya dengan satu kata.
     #    Pertanyaan: {query}"
     """
-    raise NotImplementedError("Implementasikan intent detection di sini")
+    normalized_query = query.lower().strip()
+
+    if TICKET_ID_PATTERN.search(normalized_query):
+        return "ticket_status"
+
+    if any(
+        keyword in normalized_query
+        for keyword in TICKET_STATUS_KEYWORDS
+    ):
+        return "ticket_status"
+
+    return "faq"
 
 
 async def handle_query(query: str) -> dict:
@@ -45,6 +74,14 @@ async def handle_query(query: str) -> dict:
         # 🔧 TODO: ekstrak ticket_id dari query (misal menggunakan regex
         # atau meminta LLM mengekstrak entitas ticket_id dari kalimat user)
         ticket_id = extract_ticket_id(query)
+
+        if not ticket_id:
+            return {
+                "status": "error",
+                "intent": "ticket_status",
+                "data": "Silakan sertakan ID tiket dengan format 'TICKET-XXXX agar dapat saya periksa'"
+            }
+
         data = get_ticket_status(ticket_id)
         return {"status": "success", "intent": "ticket_status", "data": data}
 
@@ -61,4 +98,9 @@ def extract_ticket_id(query: str) -> str:
     # TODO: implementasikan ekstraksi ticket_id dari teks query.
     # Format ticket_id pada mock_tickets.csv adalah 'TICKET-XXXX'.
     """
-    raise NotImplementedError("Implementasikan ekstraksi ticket_id di sini")
+    match = TICKET_ID_PATTERN.search(query)
+
+    if match:
+        return match.group(0).upper()
+
+    return None
