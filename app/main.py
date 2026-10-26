@@ -7,17 +7,30 @@ Alur endpoint utama:
   3. Router memanggil RAG (rag.py) atau tool (tools.py) sesuai intent
   4. Mengembalikan response terstruktur ke client
 """
-
-from fastapi import FastAPI
-from pydantic import BaseModel
+import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, field_validator
 
 from app.router import handle_query
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 app = FastAPI(title="IT Helpdesk Assistant API")
 
 
 class AskRequest(BaseModel):
-    query: str
+    query: str = Field(
+        min_length=1,
+        description="Pertanyaan atau permintaan pengguna",
+    )
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Query cannot be empty or whitespace.")
+        return value
 
 
 class AskResponse(BaseModel):
@@ -42,5 +55,23 @@ async def ask(request: AskRequest):
     # TODO: tambahkan error handling untuk kondisi LLM gagal merespons
     # atau intent tidak dapat dikenali (lihat panduan error handling di Sesi 13.4)
     """
-    result = await handle_query(request.query)
-    return AskResponse(**result)
+    try:
+        result = await handle_query(request.query)
+        return AskResponse(**result)
+
+    except HTTPException:
+        raise
+
+    except (TimeoutError, ConnectionError):
+        logger.exception("Service dependency unavailable or timed out")
+        raise HTTPException(
+            status_code=503,
+            detail="A required service is temporarily unavailable.",
+        )
+
+    except Exception:
+        logger.exception("Unexpected error while processing query")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while processing the request.",
+        )
