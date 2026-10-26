@@ -16,14 +16,15 @@ import pandas as pd
 import numpy as np
 import faiss
 from google import genai
-
+from dotenv import load_dotenv
 
 #Konfigurasi
 BASE_DIR = Path(__file__).resolve().parent.parent
-KNOWLEDGE_BASE_PATH = "data/it_helpdesk_knowledge_base.csv"
+KNOWLEDGE_BASE_PATH = Path("data/it_helpdesk_knowledge_base.csv")
 
-EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
-GENERATION_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash")
+load_dotenv()
+EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL")
+GENERATION_MODEL = os.getenv("GEMINI_MODEL")
 
 # 🔧 TODO: muat knowledge base dan bangun index FAISS saat aplikasi startup
 # (bukan di setiap request), agar lebih efisien. Pertimbangkan menggunakan
@@ -54,7 +55,7 @@ def _get_embedding(text: str):
     result = _client.models.embed_content(
         model=EMBEDDING_MODEL,
         contents=text,
-        config={"task_type": "RETRIEVAL+QUERY"}
+        config={"task_type": "RETRIEVAL_QUERY"}
     )
 
     if not result.embeddings or not result.embeddings[0].values:
@@ -148,8 +149,6 @@ def build_index():
         _df = df
         _documents = documents
         _index = index
-    
-    raise NotImplementedError("Implementasikan build_index di sini")
 
 
 def semantic_search(query: str, top_k: int = 3):
