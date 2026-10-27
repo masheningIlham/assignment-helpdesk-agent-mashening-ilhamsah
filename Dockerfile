@@ -1,15 +1,15 @@
-# 🔧 TODO: lengkapi Dockerfile berikut mengikuti pola yang sudah dipelajari
-# di Sesi 14.2 (FROM python -> WORKDIR -> COPY -> RUN pip -> CMD).
-
 FROM python:3.11-slim
-
 WORKDIR /app
 
-# TODO: copy requirements.txt terlebih dahulu, lalu install dependencies
-# (praktik yang baik agar Docker layer caching bekerja optimal)
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# TODO: copy seluruh source code aplikasi ke dalam container
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# TODO: tentukan port yang akan digunakan (misal 8000) dan expose port tersebut
+COPY app/ ./app/
+COPY data/ ./data/
 
-# TODO: tentukan CMD untuk menjalankan aplikasi FastAPI menggunakan uvicorn
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
